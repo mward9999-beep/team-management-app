@@ -1,0 +1,356 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    function teamPath(teamId) {
+      return /databases/$(database)/documents/teams/$(teamId);
+    }
+
+    function teamExists(teamId) {
+      return exists(teamPath(teamId));
+    }
+
+    function teamData(teamId) {
+      return get(teamPath(teamId)).data;
+    }
+
+    function roleFromTeam(team) {
+      return team.get('memberRoles', {}).get(uid(), '');
+    }
+
+    function isTeamMemberFromData(team) {
+      return signedIn() && (
+        team.get('ownerId', '') == uid() ||
+        team.get('memberIds', []).hasAny([uid()])
+      );
+    }
+
+    function isTeamMember(teamId) {
+      return signedIn() && teamExists(teamId) && isTeamMemberFromData(teamData(teamId));
+    }
+
+    function hasTeamRole(teamId, roles) {
+      return isTeamMember(teamId) && roles.hasAny([roleFromTeam(teamData(teamId))]);
+    }
+
+    function isOwner(teamId) {
+      return isTeamMember(teamId) && (
+        teamData(teamId).get('ownerId', '') == uid()
+      );
+    }
+
+    function canEditRoster(teamId) {
+      return hasTeamRole(teamId, ['owner', 'manager', 'headCoach']);
+    }
+
+    function canCreateSchedule(teamId) {
+      return hasTeamRole(teamId, ['owner', 'manager', 'headCoach']);
+    }
+
+    function canSendTeamMessage(teamId) {
+      return hasTeamRole(teamId, ['owner', 'manager', 'headCoach', 'assistantCoach']);
+    }
+
+    function canManageMembers(teamId) {
+      return hasTeamRole(teamId, ['owner', 'manager', 'headCoach']);
+    }
+
+    function canDeleteTeam(teamId) {
+      return isOwner(teamId);
+    }
+
+    function canDeleteSchedule(teamId) {
+      return hasTeamRole(teamId, ['owner', 'manager', 'headCoach']);
+    }
+
+    function canDeleteMessage(teamId) {
+      return hasTeamRole(teamId, ['owner', 'manager', 'headCoach']);
+    }
+
+    function isValidPlayerCreate() {
+      return canEditRoster(request.resource.data.get('teamId', '')) &&
+        request.resource.data.get('createdByUserId', '') == uid();
+    }
+
+    function isValidScheduleCreate() {
+      return canCreateSchedule(request.resource.data.get('teamId', '')) &&
+        request.resource.data.get('createdByUserId', '') == uid();
+    }
+
+    function pendingInvitePath(inviteId) {
+      return /databases/$(database)/documents/pendingInvites/$(inviteId);
+    }
+
+    function pendingInviteData(inviteId) {
+      return get(pendingInvitePath(inviteId)).data;
+    }
+
+    function inviteEmailMatchesAuth(invite) {
+      return signedIn() && invite.get('email', '') == request.auth.token.email;
+    }
+
+    function isInvitedParentTeamUpdate(teamId) {
+      let inviteId = request.resource.data.get('lastMemberInviteId', '');
+      let invite = pendingInviteData(inviteId);
+
+      return inviteId != '' &&
+        inviteEmailMatchesAuth(invite) &&
+        invite.get('teamId', '') == teamId &&
+        invite.get('role', '') == 'parent' &&
+        invite.get('status', '') == 'pending' &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'lastMemberInviteId',
+          'memberIds',
+          'memberRoles',
+          'updatedAt'
+        ]) &&
+        request.resource.data.get('memberIds', []).hasAny([uid()]) &&
+        request.resource.data.get('memberRoles', {}).get(uid(), '') == 'parent';
+    }
+
+    function isTeamMembershipUpdate(teamId) {
+      return canManageMembers(teamId) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'memberIds',
+          'memberRoles',
+          'updatedAt'
+        ]);
+    }
+
+    function isInvitedParentMemberWrite() {
+      let inviteId = request.resource.data.get('pendingInviteId', '');
+      let invite = pendingInviteData(inviteId);
+
+      return inviteId != '' &&
+        inviteEmailMatchesAuth(invite) &&
+        invite.get('teamId', '') == request.resource.data.get('teamId', '') &&
+        invite.get('playerId', '') == request.resource.data.get('playerId', '') &&
+        invite.get('role', '') == 'parent' &&
+        invite.get('status', '') == 'pending' &&
+        request.resource.data.get('userId', '') == uid() &&
+        request.resource.data.get('role', '') == 'parent' &&
+        request.resource.data.get('status', '') == 'active';
+    }
+
+    function isInvitedParentPlayerLink(playerId) {
+      let inviteId = request.resource.data.get('lastParentInviteId', '');
+      let invite = pendingInviteData(inviteId);
+
+      return inviteId != '' &&
+        inviteEmailMatchesAuth(invite) &&
+        invite.get('teamId', '') == resource.data.get('teamId', '') &&
+        invite.get('playerId', '') == playerId &&
+        invite.get('role', '') == 'parent' &&
+        invite.get('status', '') == 'pending' &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'lastParentInviteId',
+          'parentUserIds',
+          'pendingParentEmails',
+          'updatedAt'
+        ]) &&
+        request.resource.data.get('parentUserIds', []).hasAny([uid()]);
+    }
+
+    function playerPath(playerId) {
+      return /databases/$(database)/documents/players/$(playerId);
+    }
+
+    function playerExists(playerId) {
+      return exists(playerPath(playerId));
+    }
+
+    function playerData(playerId) {
+      return get(playerPath(playerId)).data;
+    }
+
+    function schedulePath(scheduleId) {
+      return /databases/$(database)/documents/schedules/$(scheduleId);
+    }
+
+    function scheduleExists(scheduleId) {
+      return exists(schedulePath(scheduleId));
+    }
+
+    function scheduleData(scheduleId) {
+      return get(schedulePath(scheduleId)).data;
+    }
+
+    function isLinkedParentForRsvpPlayer(teamId, playerId) {
+      return playerExists(playerId) &&
+        playerData(playerId).get('teamId', '') == teamId &&
+        playerData(playerId).get('parentUserIds', []).hasAny([uid()]);
+    }
+
+    function isSelfRsvpPlayer(teamId, playerId) {
+      return playerExists(playerId) &&
+        playerData(playerId).get('teamId', '') == teamId &&
+        playerData(playerId).get('userId', '') == uid();
+    }
+
+    function canWriteScheduleRsvp(teamId, playerId) {
+      return isTeamMember(teamId) &&
+        (isLinkedParentForRsvpPlayer(teamId, playerId) || isSelfRsvpPlayer(teamId, playerId));
+    }
+
+    function isValidRsvpStatus(status) {
+      return ['available', 'notAvailable', 'maybe'].hasAny([status]);
+    }
+
+    function isValidScheduleRsvpWrite(rsvpId) {
+      let teamId = request.resource.data.get('teamId', '');
+      let scheduleId = request.resource.data.get('scheduleId', '');
+      let playerId = request.resource.data.get('playerId', '');
+
+      return request.resource.data.keys().hasOnly([
+          'id',
+          'teamId',
+          'scheduleId',
+          'playerId',
+          'userId',
+          'status',
+          'note',
+          'updatedAt'
+        ]) &&
+        request.resource.data.get('id', '') == rsvpId &&
+        request.resource.data.get('userId', '') == uid() &&
+        isValidRsvpStatus(request.resource.data.get('status', '')) &&
+        scheduleExists(scheduleId) &&
+        scheduleData(scheduleId).get('teamId', '') == teamId &&
+        canWriteScheduleRsvp(teamId, playerId);
+    }
+
+    function keepsRsvpIdentitySame() {
+      return request.resource.data.get('id', '') == resource.data.get('id', '') &&
+        request.resource.data.get('teamId', '') == resource.data.get('teamId', '') &&
+        request.resource.data.get('scheduleId', '') == resource.data.get('scheduleId', '') &&
+        request.resource.data.get('playerId', '') == resource.data.get('playerId', '');
+    }
+
+    function isValidPendingInviteCreate() {
+      return canManageMembers(request.resource.data.get('teamId', '')) &&
+        request.resource.data.get('createdByUserId', '') == uid() &&
+        request.resource.data.get('role', '') == 'parent' &&
+        request.resource.data.get('status', '') == 'pending';
+    }
+
+    function isInvitedParentAcceptingInvite() {
+      return inviteEmailMatchesAuth(resource.data) &&
+        resource.data.get('status', '') == 'pending' &&
+        request.resource.data.get('status', '') == 'accepted' &&
+        request.resource.data.get('acceptedByUserId', '') == uid() &&
+        request.resource.data.get('teamId', '') == resource.data.get('teamId', '') &&
+        request.resource.data.get('playerId', '') == resource.data.get('playerId', '') &&
+        request.resource.data.get('email', '') == resource.data.get('email', '') &&
+        request.resource.data.get('role', '') == resource.data.get('role', '');
+    }
+
+    function isValidRole(role) {
+      return ['owner', 'manager', 'headCoach', 'assistantCoach', 'parent', 'player'].hasAny([role]);
+    }
+
+    function isValidTeamCreate() {
+      return signedIn() &&
+        request.resource.data.get('ownerId', '') == uid() &&
+        request.resource.data.get('createdBy', '') == uid() &&
+        request.resource.data.get('memberIds', []).hasOnly([uid()]) &&
+        request.resource.data.get('memberRoles', {}).get(uid(), '') == 'owner';
+    }
+
+    function isOwnerMemberCreate() {
+      let teamId = request.resource.data.get('teamId', '');
+      let nextTeam = getAfter(teamPath(teamId)).data;
+
+      return signedIn() &&
+        request.resource.data.get('userId', '') == uid() &&
+        request.resource.data.get('isOwner', false) == true &&
+        request.resource.data.get('role', '') == 'Owner' &&
+        nextTeam.get('ownerId', '') == uid() &&
+        nextTeam.get('memberIds', []).hasAny([uid()]) &&
+        nextTeam.get('memberRoles', {}).get(uid(), '') == 'owner';
+    }
+
+    function keepsTeamIdSame() {
+      return request.resource.data.get('teamId', '') == resource.data.get('teamId', '');
+    }
+
+    match /users/{userId} {
+      allow get: if signedIn() && uid() == userId;
+      allow list: if signedIn() && request.query.limit <= 1;
+      allow create, update: if signedIn() && uid() == userId;
+      allow delete: if false;
+    }
+
+    match /teams/{teamId} {
+      allow create: if isValidTeamCreate();
+      allow get, list: if isTeamMemberFromData(resource.data);
+      allow update: if isOwner(teamId) ||
+        isTeamMembershipUpdate(teamId) ||
+        isInvitedParentTeamUpdate(teamId);
+      allow delete: if canDeleteTeam(teamId);
+    }
+
+    match /teamMembers/{memberId} {
+      allow get, list: if isTeamMember(resource.data.get('teamId', ''));
+      allow create: if isOwnerMemberCreate() ||
+        isInvitedParentMemberWrite() ||
+        (
+          canManageMembers(request.resource.data.get('teamId', '')) &&
+          isValidRole(request.resource.data.get('accessRole', 'player'))
+        );
+      allow update: if (keepsTeamIdSame() && canManageMembers(resource.data.get('teamId', ''))) ||
+        isInvitedParentMemberWrite();
+      allow delete: if canManageMembers(resource.data.get('teamId', '')) &&
+        (resource.data.get('isOwner', false) == false || isOwner(resource.data.get('teamId', '')));
+    }
+
+    match /players/{playerId} {
+      allow get, list: if isTeamMember(resource.data.get('teamId', ''));
+      allow create: if isValidPlayerCreate();
+      allow update: if (keepsTeamIdSame() && canEditRoster(resource.data.get('teamId', ''))) ||
+        isInvitedParentPlayerLink(playerId);
+      allow delete: if canEditRoster(resource.data.get('teamId', ''));
+    }
+
+    match /schedules/{scheduleId} {
+      allow get, list: if isTeamMember(resource.data.get('teamId', ''));
+      allow create: if isValidScheduleCreate();
+      allow update: if (
+        keepsTeamIdSame() &&
+        canCreateSchedule(resource.data.get('teamId', ''))
+      );
+      allow delete: if canDeleteSchedule(resource.data.get('teamId', ''));
+    }
+
+    match /scheduleRsvps/{rsvpId} {
+      allow get, list: if isTeamMember(resource.data.get('teamId', ''));
+      allow create: if isValidScheduleRsvpWrite(rsvpId);
+      allow update: if keepsRsvpIdentitySame() && isValidScheduleRsvpWrite(rsvpId);
+      allow delete: if false;
+    }
+
+    match /messages/{messageId} {
+      allow get, list: if isTeamMember(resource.data.get('teamId', ''));
+      allow create: if canSendTeamMessage(request.resource.data.get('teamId', '')) &&
+        request.resource.data.get('senderId', '') == uid();
+      allow update: if keepsTeamIdSame() && canSendTeamMessage(resource.data.get('teamId', ''));
+      allow delete: if canDeleteMessage(resource.data.get('teamId', ''));
+    }
+
+    match /pendingInvites/{inviteId} {
+      allow get, list: if canManageMembers(resource.data.get('teamId', '')) ||
+        inviteEmailMatchesAuth(resource.data);
+      allow create: if isValidPendingInviteCreate();
+      allow update: if canManageMembers(resource.data.get('teamId', '')) ||
+        isInvitedParentAcceptingInvite();
+      allow delete: if canManageMembers(resource.data.get('teamId', ''));
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "Team App MVP",
+    "slug": "team-app-mvp",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "teamappmvp",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.teamapp.mvp"
+    },
+    "android": {
+      "package": "com.teamapp.mvp",
+      "edgeToEdgeEnabled": true
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
