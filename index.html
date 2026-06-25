@@ -1,127 +1,24 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Team App MVP</title>
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
-    <div class="app-shell">
-      <header class="topbar">
-        <div class="topbar-left">
-          <button
-            class="icon-button menu-toggle"
-            type="button"
-            aria-label="Open menu"
-            aria-expanded="false"
-            aria-controls="side-menu"
-          >
-            <span></span>
-            <span></span>
-            <span></span>
-          </button>
-
-          <a class="brand" href="#" aria-label="Team App MVP home" data-page="schedule">
-            <span class="logo-mark" aria-hidden="true">T</span>
-            <span class="brand-copy">
-              <span class="app-name">Team App MVP</span>
-              <span class="team-name" id="current-team">Team Blue</span>
-              <span class="auth-status" data-auth-status>Signed out</span>
-            </span>
-          </a>
-        </div>
-
-        <nav class="main-nav" aria-label="Primary navigation">
-          <button class="nav-link is-active" type="button" data-page="schedule">Schedule</button>
-          <button class="nav-link" type="button" data-page="roster">Roster</button>
-          <button class="nav-link" type="button" data-page="messages">Messages</button>
-          <div class="team-switcher">
-            <button
-              class="team-button"
-              type="button"
-              aria-haspopup="true"
-              aria-expanded="false"
-              aria-controls="team-menu"
-            >
-              Change Team
-            </button>
-            <div class="team-menu" id="team-menu" role="menu">
-              <button type="button" role="menuitem" data-team="Team Blue">Team Blue</button>
-              <button type="button" role="menuitem" data-team="Team Red">Team Red</button>
-              <button type="button" role="menuitem" data-team="Team White">Team White</button>
-            </div>
-          </div>
-        </nav>
-
-        <button
-          class="icon-button media-toggle"
-          type="button"
-          aria-label="Open team files"
-          aria-expanded="false"
-          aria-controls="asset-menu"
-        >
-          <span></span>
-          <span></span>
-          <span></span>
-        </button>
-      </header>
-
-      <div class="menu-backdrop" hidden></div>
-      <div class="asset-backdrop" hidden></div>
-
-      <aside class="side-menu" id="side-menu" aria-label="Account menu" aria-hidden="true">
-        <button class="menu-item" type="button" data-page="settings">Settings</button>
-        <button class="menu-item" type="button" data-page="profile">Profile</button>
-        <button class="menu-item" type="button" data-sign-out hidden>Log Out</button>
-      </aside>
-
-      <aside class="asset-menu" id="asset-menu" aria-label="Team files menu" aria-hidden="true">
-        <div class="asset-header">
-          <div>
-            <p class="eyebrow-card">Team Files</p>
-            <h2>Pictures & Files</h2>
-          </div>
-          <button class="close-button" type="button" aria-label="Close team files" data-close-assets>
-            Close
-          </button>
-        </div>
-
-        <div class="upload-grid">
-          <label class="upload-drop is-disabled">
-            <span class="upload-title">Add Pictures</span>
-            <span class="upload-copy">Skipped until Firebase Storage is added.</span>
-            <input type="file" accept="image/*" multiple disabled />
-          </label>
-
-          <label class="upload-drop is-disabled">
-            <span class="upload-title">Add Files</span>
-            <span class="upload-copy">Skipped until Firebase Storage is added.</span>
-            <input type="file" multiple disabled />
-          </label>
-        </div>
-
-        <section class="asset-section">
-          <h3>Pictures</h3>
-          <div class="picture-grid" data-picture-list>
-            <p class="empty-assets">No pictures added yet.</p>
-          </div>
-        </section>
-
-        <section class="asset-section">
-          <h3>Files</h3>
-          <div class="file-list" data-file-list>
-            <p class="empty-assets">No files added yet.</p>
-          </div>
-        </section>
-      </aside>
-
-      <main class="main-content" id="main-content" tabindex="-1"></main>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TeamAppMVP</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="container">
+    <div class="logo">T</div>
+    <h1>TeamAppMVP</h1>
+    <p class="lead">A simple team management app for coaches, players, and families.</p>
+    <div class="card">
+      <h2>About</h2>
+      <p>TeamAppMVP helps teams stay organized with schedules, rosters, messaging, and team updates in one place.</p>
     </div>
-
-    <script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore-compat.js"></script>
-    <script src="app.js"></script>
-  </body>
+    <div class="links">
+      <a href="support.html">Support</a>
+      <a href="privacy.html">Privacy Policy</a>
+    </div>
+  </main>
+</body>
 </html>
